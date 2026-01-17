@@ -1,0 +1,165 @@
+Deliverables:
+Pivot_Report.xlsx
+Pivot_Report.pdf
+5 summarized insights in document format (Insights.docx / Insights.txt)
+Final Outcome:
+Intern learns data summarization, aggregation, grouping, and insight reporting using pivot tables and
+charts.
+-------------------------------------------------------------------------------------------------------------------
+import pandas as pd
+
+df = pd.read_csv("/content/superstoredataset/train.csv")
+df.head()
+--------------------------------------------------------
+# Missing values
+df.isnull().sum()
+
+# Convert date
+df['Order Date'] = pd.to_datetime(df['Order Date'], errors='coerce')
+
+# Remove duplicates
+df.drop_duplicates(inplace=True)
+
+# Clean categorical columns
+for col in ['Category', 'Region', 'Segment']:
+    df[col] = df[col].str.strip()
+-----------------------------------------------------------------
+pivot_category = pd.pivot_table(
+    df,
+    values='Sales',
+    index='Category',
+    aggfunc='sum'
+).sort_values(by='Sales', ascending=False)
+--------------------------------------------------------------
+pivot_region_segment = pd.pivot_table(
+    df,
+    values='Sales',
+    index='Region',
+    columns='Segment',
+    aggfunc='sum'
+)
+--------------------------------------------------------------------
+df.columns
+-------------------------------------------------------------------
+total_sales = df['Sales'].sum()
+
+df['Sales Contribution %'] = (df['Sales'] / total_sales) * 100
+-------------------------------------------------------------------
+pivot_sales_contribution = pd.pivot_table(
+    df,
+    values='Sales Contribution %',
+    index=['Category','Region'],
+    aggfunc='sum'
+)
+
+pivot_sales_contribution
+-------------------------------------------------------
+!pip install python-docx
+-----------------------------------------------------------
+from docx import Document
+
+doc = Document()
+doc.add_heading('Superstore Sales Analysis – Key Insights', level=1)
+
+insights_list = [
+    "Technology category in the East region contributes the highest share of total sales (11.63%), making it the strongest revenue driver.",
+    "The West region shows consistently strong performance across all product categories, indicating a stable and mature market.",
+    "The South region contributes the least to total sales across categories, highlighting a need for focused business strategies.",
+    "Technology outperforms Furniture and Office Supplies in every region, confirming it as the most impactful category.",
+    "The Central region demonstrates moderate and balanced sales contribution, suggesting scope for expansion through targeted initiatives."
+]
+
+for insight in insights_list:
+    doc.add_paragraph(insight, style='List Number')
+
+doc.save("Insights.docx")
+------------------------------------------------------------------------------
+from google.colab import files
+files.download("Insights.docx")
+-------------------------------------------------------------------------
+import pandas as pd
+
+# Sales by Category
+pivot_category = pd.pivot_table(
+    df,
+    values='Sales',
+    index='Category',
+    aggfunc='sum'
+).sort_values(by='Sales', ascending=False)
+
+# Sales by Region & Segment
+pivot_region_segment = pd.pivot_table(
+    df,
+    values='Sales',
+    index='Region',
+    columns='Segment',
+    aggfunc='sum'
+)
+
+# Sales Contribution %
+total_sales = df['Sales'].sum()
+df['Sales Contribution %'] = (df['Sales'] / total_sales) * 100
+
+pivot_sales_contribution = pd.pivot_table(
+    df,
+    values='Sales Contribution %',
+    index=['Category','Region'],
+    aggfunc='sum'
+)
+------------------------------------------------------------------------------------
+with pd.ExcelWriter("Pivot_Report.xlsx", engine="openpyxl") as writer:
+    pivot_category.to_excel(writer, sheet_name="Sales_by_Category")
+    pivot_region_segment.to_excel(writer, sheet_name="Sales_by_Region_Segment")
+    pivot_sales_contribution.to_excel(writer, sheet_name="Sales_Contribution_%")
+-----------------------------------------------------------------------------------
+from google.colab import files
+files.download("Pivot_Report.xlsx")
+------------------------------------------------------------------------------
+import matplotlib.pyplot as plt
+------------------------------------------------------------------------
+pivot_category.plot(kind='bar', figsize=(7,5))
+plt.title("Total Sales by Category")
+plt.ylabel("Sales")
+plt.tight_layout()
+plt.savefig("sales_by_category.png")
+plt.show()
+-----------------------------------------------------------------------
+df.groupby('Region')['Sales'].sum().plot(
+    kind='pie', autopct='%1.1f%%', figsize=(6,6)
+)
+plt.title("Sales Distribution by Region")
+plt.ylabel("")
+plt.tight_layout()
+plt.savefig("sales_by_region.png")
+plt.show()
+-------------------------------------------------------------------------------
+!pip install reportlab
+----------------------------------------------------------------------------
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Image, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+
+pdf = SimpleDocTemplate("Pivot_Report.pdf")
+styles = getSampleStyleSheet()
+content = []
+
+content.append(Paragraph("Superstore Sales Pivot Report", styles['Title']))
+content.append(Spacer(1, 12))
+
+content.append(Paragraph("Sales by Category", styles['Heading2']))
+content.append(Image("sales_by_category.png", width=400, height=300))
+content.append(Spacer(1, 12))
+
+content.append(Paragraph("Sales by Region", styles['Heading2']))
+content.append(Image("sales_by_region.png", width=400, height=300))
+content.append(Spacer(1, 12))
+
+content.append(Paragraph("Key Insights", styles['Heading2']))
+content.append(Paragraph(
+    "Technology and West/East regions contribute the highest sales, while the South region underperforms.",
+    styles['Normal']
+))
+
+pdf.build(content)
+--------------------------------------------------------------------------------------------------
+files.download("Pivot_Report.pdf")
+----------------------------------------------------------------------------------------------------
