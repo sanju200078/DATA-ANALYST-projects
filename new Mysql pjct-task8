@@ -1,1 +1,107 @@
+SELECT VERSION();
+SHOW TABLES;
+DESCRIBE superstore;
+🔹 STEP 1: Base Aggregation – Total Sales per Customer
+SELECT
+    `Customer Name`,
+    SUM(`Sales`) AS total_sales
+FROM superstore1
+GROUP BY `Customer Name`
+ORDER BY total_sales DESC;
+This must return rows
+✔ Confirms data is correct
+🔹 STEP 2: Rank Customers by Sales per Region (ROW_NUMBER)
+SELECT
+    `Region`,
+    `Customer Name`,
+    SUM(`Sales`) AS total_sales,
+    ROW_NUMBER() OVER (
+        PARTITION BY `Region`
+        ORDER BY SUM(`Sales`) DESC
+    ) AS row_num
+FROM superstore1
+GROUP BY `Region`, `Customer Name`;
+Unique ranking inside each region
+STEP 3: RANK vs DENSE_RANK (Tie handling)
+SELECT
+    `Region`,
+    `Customer Name`,
+    SUM(`Sales`) AS total_sales,
+    RANK() OVER (
+        PARTITION BY `Region`
+        ORDER BY SUM(`Sales`) DESC
+    ) AS rank_val,
+    DENSE_RANK() OVER (
+        PARTITION BY `Region`
+        ORDER BY SUM(`Sales`) DESC
+    ) AS dense_rank_val
+FROM superstore1
+GROUP BY `Region`, `Customer Name`;
+STEP 4: Convert Order Date (IMPORTANT for time analysis)
+SELECT
+    STR_TO_DATE(`Order Date`, '%d-%m-%Y') AS order_date,
+    `Sales`
+FROM superstore1;
+We’ll use this conversion inside queries (no need to alter table now).
+STEP 5: Running Total of Sales
+SELECT
+    STR_TO_DATE(`Order Date`, '%d-%m-%Y') AS order_date,
+    `Sales`,
+    SUM(`Sales`) OVER (
+        ORDER BY STR_TO_DATE(`Order Date`, '%d-%m-%Y')
+    ) AS running_total_sales
+FROM superstore1;
+Cumulative sales over time
+STEP 6: Month-on-Month (MoM) Growth using LAG
+WITH monthly_sales AS (
+    SELECT
+        DATE_FORMAT(
+            STR_TO_DATE(`Order Date`, '%d-%m-%Y'),
+            '%Y-%m'
+        ) AS month,
+        SUM(`Sales`) AS total_sales
+    FROM superstore1
+    GROUP BY month
+)
+SELECT
+    month,
+    total_sales,
+    LAG(total_sales) OVER (ORDER BY month) AS prev_month_sales,
+    total_sales - LAG(total_sales) OVER (ORDER BY month) AS mom_growth
+FROM monthly_sales;
+🔹 STEP 7: Top 3 Products per Category (CORE TASK)
+SELECT *
+FROM (
+    SELECT
+        `Category`,
+        `Product Name`,
+        SUM(`Sales`) AS total_sales,
+        DENSE_RANK() OVER (
+            PARTITION BY `Category`
+            ORDER BY SUM(`Sales`) DESC
+        ) AS rank_in_category
+    FROM superstore1
+    GROUP BY `Category`, `Product Name`
+) ranked_products
+WHERE rank_in_category <= 3;
+This is a textbook window-function query
+EXPORT DELIVERABLES (MySQL Workbench)
 
+Run query
+
+Right-click result grid → Export → CSV
+
+Save as:
+
+ranked_customers.csv
+
+mom_growth.csv
+FINAL FILE LIST (Submission-ready)
+task8_window.sql
+ranked_customers.csv
+mom_growth.csv
+insights_task8.txt
+README.md
+
+
+“I used MySQL window functions like ROW_NUMBER, DENSE_RANK, and LAG to perform regional ranking, top-N analysis, and time-based growth on the Global Superstore dataset.”
